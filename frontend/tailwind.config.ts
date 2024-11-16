@@ -1,9 +1,7 @@
 import type { Config } from "tailwindcss";
 import defaultTheme from "tailwindcss/defaultTheme";
-import colors from "tailwindcss/colors";
 import { default as flattenColorPalette } from "tailwindcss/lib/util/flattenColorPalette";
 
-// Aceternity plugin for adding CSS variables for colors
 function addVariablesForColors({ addBase, theme }: any) {
   const allColors = flattenColorPalette(theme("colors"));
   const newVars = Object.fromEntries(
@@ -25,47 +23,27 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Custom color palette based on your design
-        background: '#020817',
-        foreground: '#f0f0f0',
-        card: {
-          DEFAULT: '#050b1b',
-          foreground: '#f0f0f0',
-        },
-        popover: {
-          DEFAULT: '#040a19',
-          foreground: '#f0f0f0',
-        },
-        primary: {
-          DEFAULT: '#050b1b',
-          foreground: '#f0f0f0',
-        },
-        secondary: {
-          DEFAULT: '#030918',
-          foreground: '#f0f0f0',
-        },
-        muted: {
-          DEFAULT: '#070d1d',
-          foreground: '#f0f0f0',
-        },
-        accent: {
-          DEFAULT: '#18CCFC',
-          foreground: '#f0f0f0',
-        },
-        destructive: {
-          DEFAULT: '#AE48FF',
-          foreground: '#f0f0f0',
-        },
-        border: '#060c1c',
-        input: '#060c1c',
-        ring: '#18CCFC',
-        chart: {
-          '1': '#18CCFC',
-          '2': '#6344F5',
-          '3': '#AE48FF',
-          '4': '#18CCFC',
-          '5': '#6344F5',
-        },
+        // Dark Mode Palette
+        background: '#10002b',
+        foreground: '#e0aaff',
+        primary: '#240046',
+        secondary: '#3c096c',
+        accent: '#5a189a',
+        muted: '#7b2cbf',
+        destructive: '#9d4edd',
+        border: '#c77dff',
+        highlight: '#e0aaff',
+
+        // Light Mode Palette
+        'background-light': '#dec9e9',
+        'foreground-light': '#240046',
+        'primary-light': '#dac3e8',
+        'secondary-light': '#d2b7e5',
+        'accent-light': '#c19ee0',
+        'muted-light': '#b185db',
+        'destructive-light': '#a06cd5',
+        'border-light': '#9163cb',
+        'highlight-light': '#815ac0',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -76,7 +54,7 @@ const config: Config = {
   },
   plugins: [
     require("tailwindcss-animate"),
-    addVariablesForColors, // Include the Aceternity plugin for dynamic variables
+    addVariablesForColors,
   ],
 };
 

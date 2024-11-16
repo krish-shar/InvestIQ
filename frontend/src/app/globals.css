@@ -5,11 +5,40 @@
 
 html {
   scroll-behavior: smooth;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html.light {
+  --background: #dec9e9;
+  --foreground: #240046;
+  --primary: #dac3e8;
+  --secondary: #d2b7e5;
+  --accent: #c19ee0;
+  --muted: #b185db;
+  --destructive: #a06cd5;
+  --border: #9163cb;
+  --highlight: #815ac0;
+}
+
+html.dark {
+  --background: #10002b;
+  --foreground: #e0aaff;
+  --primary: #240046;
+  --secondary: #3c096c;
+  --accent: #5a189a;
+  --muted: #7b2cbf;
+  --destructive: #9d4edd;
+  --border: #c77dff;
+  --highlight: #e0aaff;
 }
 
 
+:root {
+  --font-family: 'Inter', sans-serif;
+}
+
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family);
 }
 
 @layer base {
