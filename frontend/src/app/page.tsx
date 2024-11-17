@@ -89,51 +89,95 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Section 2: What makes us different */}
-      <section ref={secondSectionRef} className="h-screen flex flex-col items-center justify-start pt-20 snap-start bg-background text-primary">
-        <motion.h2 
-          variants={variants}
-          initial="hidden"
-          animate={controls}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-5xl font-bold mb-12 text-center"
-        >
-          We are different because:
-        </motion.h2>
-        <motion.h3
-          variants={variants}
-          initial="hidden"
-          animate={controls}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="text-3xl font-normal mb-8 text-center"
-        >
-          Our data comes from:
-        </motion.h3>
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4 mb-12">
-          {dataSources.map((source, index) => (
-            <motion.div
-              key={source.text}
-              variants={variants}
-              initial="hidden"
-              animate={controls}
-              transition={{ duration: 0.5, delay: 1 + index * 0.2 }}
-              className="flex flex-col items-center"
-            >
-              <source.icon className="text-5xl mb-2" />
-              <p className="text-sm font-extralight text-center">{source.text}</p>
-            </motion.div>
-          ))}
-        </div>
-        <motion.h3
-          variants={variants}
-          initial="hidden"
-          animate={controls}
-          transition={{ duration: 0.8, delay: 2 }}
-          className="text-3xl font-normal text-center"
-        >
-          Our app writes code, and fixes it itself!
-        </motion.h3>
-      </section>
+{/* Section 2: What makes us different */}
+<section ref={secondSectionRef} className="min-h-screen flex flex-col items-center justify-start pt-20 snap-start bg-background text-primary">
+  <motion.h2 
+    variants={variants}
+    initial="hidden"
+    animate={controls}
+    transition={{ duration: 0.8, delay: 0.2 }}
+    className="text-5xl font-bold mb-12 text-center"
+  >
+    We are different because:
+  </motion.h2>
+  <motion.p
+    variants={variants}
+    initial="hidden"
+    animate={controls}
+    transition={{ duration: 0.8, delay: 1 }}
+    className="text-xl font-light mb-12 text-center max-w-2xl"
+  >
+    We provide AI-powered stock analysis and personalized trading strategies through the use of accurate, up-to-date stock insights simplified for all levels of investors, and an intelligent chatbot that creates and refines custom trading algorithms based on your prompts, whether technical or non-technical.
+  </motion.p>
+  <motion.h3
+    variants={variants}
+    initial="hidden"
+    animate={controls}
+    transition={{ duration: 0.8, delay: 1.4 }}
+    className="text-3xl font-normal mb-8 text-center"
+  >
+    Our data comes from:
+  </motion.h3>
+  <div className="grid grid-cols-2 gap-8 md:grid-cols-4 mb-12">
+    {dataSources.map((source, index) => (
+      <motion.div
+        key={source.text}
+        variants={variants}
+        initial="hidden"
+        animate={controls}
+        transition={{ duration: 0.5, delay: 1.8 + index * 0.2 }}
+        className="flex flex-col items-center"
+      >
+        <source.icon className="text-5xl mb-2" />
+        <p className="text-sm font-extralight text-center">{source.text}</p>
+      </motion.div>
+    ))}
+  </div>
+  <motion.h3
+    variants={variants}
+    initial="hidden"
+    animate={controls}
+    transition={{ duration: 0.8, delay: 2.8 }}
+    className="text-3xl font-normal text-center mb-8"
+  >
+    Our app writes code, and fixes it itself!
+  </motion.h3>
+  <motion.div
+    variants={variants}
+    initial="hidden"
+    animate={controls}
+    transition={{ duration: 0.8, delay: 3.2 }}
+    className="flex flex-col md:flex-row items-center justify-center w-full max-w-6xl"
+  >
+    <div className="w-full md:w-1/2 p-4">
+      <p className="text-lg mb-4">
+        Our AI-powered system revolutionizes algorithm creation:
+      </p>
+      <ol className="list-decimal list-inside space-y-2">
+        <li>Generates trading algorithms based on user prompts</li>
+        <li>Rigorously tests the code in simulated environments</li>
+        <li>Identifies and analyzes errors or suboptimal performance</li>
+        <li>Automatically refines and optimizes the code</li>
+        <li>Repeats the process until the algorithm meets quality standards</li>
+      </ol>
+      <p className="mt-4">
+        This iterative process ensures robust, efficient, and tailored trading strategies for our users.
+      </p>
+    </div>
+    <div className="w-full md:w-1/2 p-4">
+      <video 
+        className="w-full rounded-lg shadow-lg"
+        autoPlay 
+        loop 
+        muted 
+        playsInline
+      >
+        <source src="/coding.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  </motion.div>
+</section>
     </div>
   );
 }

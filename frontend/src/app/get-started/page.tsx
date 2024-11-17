@@ -32,7 +32,8 @@ export default function GetStartedPage() {
     const stocksParam = selectedStocks
       .map((s) => encodeURIComponent(s.symbol))
       .join(",");
-    router.push(`/analysis-loader?stocks=${stocksParam}`);
+    const initialPrompt = `Which is better ${selectedStocks.map(s => s.symbol).join(', ')} and why?`;
+    router.push(`/analysis-loader?stocks=${stocksParam}&initialPrompt=${encodeURIComponent(initialPrompt)}`);
   };
 
   const placeholders = [
@@ -56,7 +57,7 @@ export default function GetStartedPage() {
         transition={{ duration: 0.5, delay: 0.5 }}
         className="text-4xl font-bold mb-8 text-center"
       >
-        Search for your desired stocks
+        Search for the stocks you want to learn more about
       </motion.h1>
       <motion.div
         initial={{ opacity: 0, y: 20 }}

@@ -64,10 +64,18 @@ export default function Dashboard() {
   const { theme } = useTheme();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const welcomeMessage: Message = {
+      text: "Hey! Ask me any questions about the stocks you are interested in",
+      isUser: false
+    };
+    setChatMessages([welcomeMessage]);
+  }, []);
+
   const handleSendMessage = async () => {
     if (inputMessage.trim()) {
       const userMessage: Message = { text: inputMessage, isUser: true };
-      setChatMessages([...chatMessages, userMessage]);
+      setChatMessages(prevMessages => [...prevMessages, userMessage]);
       setIsLoading(true);
 
       try {
