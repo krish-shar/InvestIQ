@@ -43,9 +43,11 @@ export default function AnalysisLoaderPage() {
 
   useEffect(() => {
     if (!loading) {
-      router.push("/dashboard");
+      const stocksQueryString = selectedStocks.join(",");
+      router.push(`/dashboard?stocks=${stocksQueryString}`);
     }
-  }, [loading, router]);
+  }, [loading, router, selectedStocks]);
+  
 
   return (
     <div className="h-screen w-full flex items-center justify-center">

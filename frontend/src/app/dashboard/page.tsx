@@ -1,33 +1,102 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
 import { ModeToggle } from "@/app/components/ui/mode-toggle";
 import { useTheme } from "next-themes";
+import { useRouter, useSearchParams } from "next/navigation";
+
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
-
-// Mock data for stocks
-const stocksData = [
-  { symbol: "AAPL", name: "Apple Inc.", price: 150.25, change: 2.5 },
-  { symbol: "GOOGL", name: "Alphabet Inc.", price: 2750.80, change: -0.8 },
-  { symbol: "MSFT", name: "Microsoft Corporation", price: 305.15, change: 1.2 },
-];
 
 type Message = {
   text: string;
   isUser: boolean;
 };
 
+const API_KEY = "e1b4cf3fe5af0f1128726818c9fbb000"; // Replace with your Marketstack API key
+// const searchParams = useSearchParams();
+// const stocksParam = searchParams.get("stocks");
+// const STOCK_SYMBOLS = stocksParam ? stocksParam.split(",") : [];
+// // const STOCK_SYMBOLS = ["AAPL", "GOOGL", "MSFT"]; // Customize stock symbols
+// const COLORS = ["rgb(255, 99, 132)", "rgb(54, 162, 235)", "rgb(75, 192, 192)"]; // Unique colors for each stock
+
 export default function Dashboard() {
+  const searchParams = useSearchParams();
+  const stocksParam = searchParams.get("stocks");
+  const STOCK_SYMBOLS = stocksParam ? stocksParam.split(",") : [];
+  // const STOCK_SYMBOLS = ["AAPL", "GOOGL", "MSFT"]; // Customize stock symbols
+  const COLORS = ["rgb(255, 99, 132)", "rgb(54, 162, 235)", "rgb(75, 192, 192)"]; // Unique colors for each stock
+  const [stocksData, setStocksData] = useState<
+    { symbol: string; name: string; price: number; change: number; historicalData: any[] }[]
+  >([]);
+  const [chartData, setChartData] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const { theme } = useTheme();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch Marketstack data
+  useEffect(() => {
+    const fetchStockData = async () => {
+      try {
+        const promises = STOCK_SYMBOLS.map(async (symbol) => {
+          const url = `https://api.marketstack.com/v1/eod?access_key=${API_KEY}&symbols=${symbol}`;
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error(`Error fetching data for ${symbol}`);
+          }
+
+          const data = await response.json();
+          const historicalData = data.data.map((entry: any) => ({
+            date: new Date(entry.date).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" }), // Format date
+            close: entry.close, // Closing price
+          }));
+
+          return {
+            symbol,
+            name: symbol, // Use symbol name; replace with API-provided names if available
+            price: historicalData[0]?.close || 0,
+            change:
+              historicalData.length > 1
+                ? ((historicalData[0]?.close - historicalData[1]?.close) / historicalData[1]?.close) * 100
+                : 0,
+            historicalData,
+          };
+        });
+
+        const stocks = await Promise.all(promises);
+
+        // Update stocks data
+        setStocksData(stocks);
+
+        // Generate chart data
+        const labels = [...new Set(stocks.flatMap((stock) => stock.historicalData.map((d) => d.date)))].sort();
+        const datasets = stocks.map((stock, index) => ({
+          label: stock.symbol,
+          data: labels.map(
+            (label) => stock.historicalData.find((d) => d.date === label)?.close || null
+          ),
+          borderColor: COLORS[index % COLORS.length], // Assign unique color
+          backgroundColor: COLORS[index % COLORS.length] + "80", // Semi-transparent background
+          tension: 0.1,
+        }));
+
+        setChartData({
+          labels,
+          datasets,
+        });
+      } catch (error) {
+        console.error("Error fetching stock data:", error);
+      }
+    };
+
+    fetchStockData();
+  }, [theme]);
 
   const handleSendMessage = () => {
     if (inputMessage.trim()) {
@@ -44,34 +113,20 @@ export default function Dashboard() {
     }
   }, [chatMessages]);
 
-  // Chart data
-  const chartData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Stock Price',
-        data: [120, 130, 125, 135, 140, 150],
-        borderColor: theme === 'dark' ? 'rgb(59, 130, 246)' : 'rgb(37, 99, 235)',
-        backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(37, 99, 235, 0.5)',
-        tension: 0.1,
-      },
-    ],
-  };
-
   const chartOptions = {
     responsive: true,
     plugins: {
       legend: {
-        position: 'top' as const,
+        position: "top" as const,
       },
       title: {
         display: true,
-        text: 'Stock Performance',
+        text: "Historical Stock Performance",
       },
     },
     scales: {
       y: {
-        beginAtZero: true,
+        beginAtZero: false,
       },
     },
   };
@@ -86,39 +141,46 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-3 gap-4 mb-6">
           {stocksData.map((stock) => (
-            <div key={stock.symbol} className="bg-card text-card-foreground p-4 rounded-lg shadow border border-gray-600/30 dark:border-gray-400/30">
+            <div
+              key={stock.symbol}
+              className="bg-card text-card-foreground p-4 rounded-lg shadow border border-gray-600/30 dark:border-gray-400/30"
+            >
               <h3 className="font-bold">{stock.symbol}</h3>
               <p>{stock.name}</p>
               <p className="text-lg">${stock.price.toFixed(2)}</p>
-              <p className={stock.change >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
-                {stock.change >= 0 ? "+" : ""}{stock.change.toFixed(2)}%
+              <p
+                className={
+                  stock.change >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                }
+              >
+                {stock.change >= 0 ? "+" : ""}
+                {stock.change.toFixed(2)}%
               </p>
             </div>
           ))}
         </div>
-        <div className="bg-card text-card-foreground p-4 rounded-lg shadow border border-gray-600/30 dark:border-gray-400/30">
-          <h3 className="text-xl font-bold mb-2">Stock Performance</h3>
-          <Line data={chartData} options={chartOptions} />
-        </div>
+        {chartData && (
+          <div className="bg-card text-card-foreground p-4 rounded-lg shadow border border-gray-600/30 dark:border-gray-400/30">
+            <h3 className="text-xl font-bold mb-2">Stock Performance</h3>
+            <Line data={chartData} options={chartOptions} />
+          </div>
+        )}
       </div>
 
       {/* Right side - Chatbot */}
       <div className="w-1/3 bg-card text-card-foreground p-6 flex flex-col border-l border-gray-600/30 dark:border-gray-400/30">
         <h2 className="text-2xl font-bold mb-4">AI Assistant</h2>
-        <div 
+        <div
           ref={chatContainerRef}
           className="flex-grow overflow-y-auto mb-4 space-y-4 border border-gray-600/30 dark:border-gray-400/30 rounded-lg p-4"
         >
           {chatMessages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-            >
+            <div key={index} className={`flex ${message.isUser ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[70%] p-3 rounded-lg ${
                   message.isUser
-                    ? 'bg-blue-500 text-white rounded-br-none'
-                    : 'bg-gray-200 dark:bg-gray-700 rounded-bl-none'
+                    ? "bg-blue-500 text-white rounded-br-none"
+                    : "bg-gray-200 dark:bg-gray-700 rounded-bl-none"
                 }`}
               >
                 {message.text}
@@ -132,7 +194,7 @@ export default function Dashboard() {
             placeholder="Ask about your stocks..."
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
             className="border-gray-600/30 dark:border-gray-400/30"
           />
           <Button onClick={handleSendMessage}>Send</Button>
@@ -140,4 +202,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-} 
+}
