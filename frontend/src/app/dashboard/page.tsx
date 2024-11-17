@@ -16,8 +16,7 @@ type Message = {
   text: string;
   isUser: boolean;
 };
-
-const API_KEY = "e1b4cf3fe5af0f1128726818c9fbb000"; // Replace with your Marketstack API key
+const API_KEY = process.env.NEXT_PUBLIC_MS_API_KEY;
 // const searchParams = useSearchParams();
 // const stocksParam = searchParams.get("stocks");
 // const STOCK_SYMBOLS = stocksParam ? stocksParam.split(",") : [];
