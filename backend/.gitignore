@@ -5,3 +5,4 @@
 **/.venv/
 notebooks/algotrading/algotrading_env/
 config.py
+generation/** 

@@ -26,6 +26,7 @@ from typing import List, Dict, Union
 from tqdm import tqdm
 from unstructured.partition.html import partition_html
 from unstructured.chunking.title import chunk_by_title
+from config import config
 from autogen_creator import write_algorithm
 # from sklearn.preprocessing import MinMaxScaler
 # from keras.models import Sequential
@@ -33,14 +34,17 @@ from autogen_creator import write_algorithm
 
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
+SAMBA_API = os.getenv("SAMBA_API")
 
 co = cohere.Client(COHERE_API_KEY)
 perclient = openai.OpenAI(api_key=PERPLEXITY_API_KEY, base_url="https://api.perplexity.ai")
+samba = openai.OpenAI(api_key=SAMBA_API, base_url="https://api.sambanova.ai/v1")
 
 app = Flask(__name__)
 CORS(app)
 
 embedded_stocks = []
+print("Starting the server...")
 
 
 @app.route('/top_thirteen_f', methods=['GET', 'POST'])
@@ -375,9 +379,50 @@ def algowriter():
     except FileNotFoundError:
         image_content = ""
     
+    
+    def read_files_from_folder(folder_path):
+        file_contents = {}
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            if os.path.isfile(file_path):
+                if filename.endswith('.py') or filename.endswith('.md'):
+                    with open(file_path, 'r') as file:
+                        file_contents[filename] = file.read()
+        return file_contents
+
+    # Read all files from the generation folder
+    generation_files = read_files_from_folder('generation')
+
+    # Create a context string from the file contents
+    additional_context = "\n".join([f"Content of {filename}:\n{content}" 
+                                for filename, content in generation_files.items()])
+
+    samba_response = samba.chat.completions.create(
+        model="Meta-Llama-3.1-70B-Instruct",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an intelligent algorithmic trader who can explain the ups and downs "
+                    "of each algorithm when asked about it. You have access to the following "
+                    f"additional files:\n{additional_context}. You are to return the entire script that has the best code at the end of the conversation."
+                ),
+            },
+            {
+                "role": "user",
+                "content": ("Explain the pros and cons of this strategy while comparing it to "
+                        "the buy-and-hold strategy. Explain how it works and why it is "
+                        "effective. " + prompt),
+            },
+        ]
+    )
+    
+    # Empty the entire generation folder
+    os.system('rm -rf generation/*')
+    
     return jsonify({
-        "response": chat_result,
-        "markdown": markdown_content,
+        "response": samba_response.choices[0].message.content,
+        # "markdown": markdown_content,
         "image": image_content
     })
 @app.route('/test_chat', methods=['POST'])
@@ -388,6 +433,5 @@ def test_chat():
 
 
 
-
 if __name__ == '__main__':
-    app.run(debug=True, port=8080)
+    app.run(debug=True, port=8080, use_reloader=False)

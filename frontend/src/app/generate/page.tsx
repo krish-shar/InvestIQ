@@ -10,7 +10,8 @@ import rehypeRaw from "rehype-raw";
 type Message = {
   text: string;
   isUser: boolean;
-  citations?: string[];
+  isImage?: boolean;
+  imageData?: string;
 };
 
 export default function ChatbotPage() {
@@ -20,17 +21,6 @@ export default function ChatbotPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
 
-  const processCitations = (text: string, citations: string[]) => {
-    const citationRegex = /\[(\d+)\]/g;
-    return text.replace(citationRegex, (match, p1) => {
-      const index = parseInt(p1) - 1;
-      if (index >= 0 && index < citations.length) {
-        return `<sup><a href="${citations[index]}" target="_blank" class="citation-link">[${index + 1}]</a></sup>`;
-      }
-      return match;
-    });
-  };
-
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
@@ -39,23 +29,43 @@ export default function ChatbotPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("http://localhost:8080/algowriter", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json" 
+        },
         body: JSON.stringify({ message: inputMessage }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      const processedText = processCitations(data.response, data.citations);
+      
+      // Add the text response
       const aiMessage: Message = {
-        text: processedText,
+        text: data.response,
         isUser: false,
-        citations: data.citations,
       };
       setChatMessages((prev) => [...prev, aiMessage]);
-    } catch {
+
+      // If there's an image, add it as a separate message
+      if (data.image) {
+        const imageMessage: Message = {
+          text: "",
+          isUser: false,
+          isImage: true,
+          imageData: data.image
+        };
+        setChatMessages((prev) => [...prev, imageMessage]);
+      }
+
+    } catch (error) {
+      console.error("Error:", error);
       setChatMessages((prev) => [
         ...prev,
-        { text: "Failed to get a response.", isUser: false },
+        { text: "Failed to get a response. Please try again.", isUser: false },
       ]);
     } finally {
       setIsLoading(false);
@@ -69,6 +79,58 @@ export default function ChatbotPage() {
     }
   }, [chatMessages]);
 
+  const MessageContent = ({ message }: { message: Message }) => {
+    if (message.isImage && message.imageData) {
+      return (
+        <div className="max-w-full">
+          <img
+            src={`data:image/png;base64,${message.imageData}`}
+            alt="Generated visualization"
+            className="rounded-lg max-w-full h-auto"
+            style={{ maxWidth: '500px', height: 'auto' }}
+            />
+        </div>
+      );
+    }
+
+    return (
+      <ReactMarkdown
+        rehypePlugins={[rehypeRaw]}
+        components={{
+          h1: ({ node, ...props }) => <h1 className="text-2xl font-bold" {...props} />,
+          h2: ({ node, ...props }) => <h2 className="text-xl font-bold" {...props} />,
+          h3: ({ node, ...props }) => <h3 className="text-lg font-bold" {...props} />,
+          strong: ({ node, ...props }) => <strong className="font-bold" {...props} />,
+          em: ({ node, ...props }) => <em className="italic" {...props} />,
+          ul: ({ node, ...props }) => <ul className="list-disc list-inside" {...props} />,
+          ol: ({ node, ...props }) => <ol className="list-decimal list-inside" {...props} />,
+          a: ({ node, ...props }) => <a className="text-blue-500 hover:underline" {...props} />,
+          code({ node, inline, className, children, ...props }) {
+            return inline ? (
+              <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded" {...props}>
+                {children}
+              </code>
+            ) : (
+              <div className="relative">
+                <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto">
+                  <button
+                    className="absolute top-2 right-2 text-sm text-blue-500"
+                    onClick={() => navigator.clipboard.writeText(children.toString())}
+                  >
+                    Copy Code
+                  </button>
+                  <code className="block">{children}</code>
+                </pre>
+              </div>
+            );
+          },
+        }}
+      >
+        {message.text}
+      </ReactMarkdown>
+    );
+  };
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       <div className="w-full max-w-2xl mx-auto p-6 flex flex-col">
@@ -81,50 +143,7 @@ export default function ChatbotPage() {
                   message.isUser ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 prose dark:prose-invert'
                 }`}
               >
-               <ReactMarkdown
-                  rehypePlugins={[rehypeRaw]}
-                  components={{
-                    h1: ({ node, ...props }) => <h1 className="text-2xl font-bold" {...props} />,
-                    h2: ({ node, ...props }) => <h2 className="text-xl font-bold" {...props} />,
-                    h3: ({ node, ...props }) => <h3 className="text-lg font-bold" {...props} />,
-                    strong: ({ node, ...props }) => <strong className="font-bold" {...props} />,
-                    em: ({ node, ...props }) => <em className="italic" {...props} />,
-                    ul: ({ node, ...props }) => <ul className="list-disc list-inside" {...props} />,
-                    ol: ({ node, ...props }) => <ol className="list-decimal list-inside" {...props} />,
-                    a: ({ node, ...props }) => <a className="text-blue-500 hover:underline" {...props} />,
-                    img: ({ src, alt }) => (
-                      <img
-                        src={src}
-                        alt={alt ?? "Image"}
-                        className="rounded-lg shadow-lg mx-auto"
-                        style={{ maxWidth: "100%", height: "auto" }}
-                      />
-                    ),
-                    code({ node, inline, className, children, ...props }) {
-                      return inline ? (
-                        <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded" {...props}>
-                          {children}
-                        </code>
-                      ) : (
-                        <div className="relative">
-                          <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto">
-                            <button
-                              className="absolute top-2 right-2 text-sm text-blue-500"
-                              onClick={() => navigator.clipboard.writeText(children.toString())}
-                            >
-                              Copy Code
-                            </button>
-                            <code className="block">{children}</code>
-                          </pre>
-                        </div>
-                      );
-                    },
-                  }}
-                >
-                  {message.text}
-                </ReactMarkdown>
-
-
+                <MessageContent message={message} />
               </div>
             </div>
           ))}
@@ -144,13 +163,6 @@ export default function ChatbotPage() {
         </div>
       </div>
       <style jsx global>{`
-        .citation-link {
-          color: #3b82f6;
-          text-decoration: none;
-        }
-        .citation-link:hover {
-          text-decoration: underline;
-        }
         .prose a {
           text-decoration: none;
         }
