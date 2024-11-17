@@ -23,32 +23,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Dark Mode Palette
-        background: '#10002b',
-        foreground: '#e0aaff',
-        primary: '#240046',
-        secondary: '#3c096c',
-        accent: '#5a189a',
-        muted: '#7b2cbf',
-        destructive: '#9d4edd',
-        border: '#c77dff',
-        highlight: '#e0aaff',
-
-        // Light Mode Palette
-        'background-light': '#dec9e9',
-        'foreground-light': '#240046',
-        'primary-light': '#dac3e8',
-        'secondary-light': '#d2b7e5',
-        'accent-light': '#c19ee0',
-        'muted-light': '#b185db',
-        'destructive-light': '#a06cd5',
-        'border-light': '#9163cb',
-        'highlight-light': '#815ac0',
-      },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+        primary: 'var(--primary)',
+        secondary: 'var(--secondary)',
+        accent: 'var(--accent)',
+        muted: 'var(--muted)',
+        destructive: 'var(--destructive)',
+        border: 'var(--border)',
+        highlight: 'var(--highlight)',
       },
     },
   },
