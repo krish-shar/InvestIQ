@@ -193,12 +193,17 @@ export function PlaceholdersAndVanishInput({
   };
 
   const filterSuggestions = (input: string) => {
+    if (!input.trim()) {
+      setSuggestions([]);
+      return;
+    }
     const filtered = stockSuggestions.filter(
       (stock) =>
-        stock.symbol.toLowerCase().includes(input.toLowerCase()) ||
+        stock.symbol.toLowerCase().startsWith(input.toLowerCase()) ||
         stock.name.toLowerCase().includes(input.toLowerCase())
     );
     setSuggestions(filtered.slice(0, 5)); // Limit to 5 suggestions
+    console.log('Filtered suggestions:', filtered); // Add this line for debugging
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,12 +212,14 @@ export function PlaceholdersAndVanishInput({
       setValue(newValue);
       filterSuggestions(newValue);
       onChange && onChange(e);
+      console.log('Input value:', newValue); // Add this line for debugging
     }
   };
 
   const handleSuggestionClick = (suggestion: { symbol: string; name: string }) => {
     setValue(suggestion.symbol);
     setSuggestions([]);
+    vanishAndSubmit();
   };
 
   return (
@@ -309,18 +316,18 @@ export function PlaceholdersAndVanishInput({
         </AnimatePresence>
       </div>
       {suggestions.length > 0 && !disabled && (
-        <div className="absolute z-50 w-full bg-white dark:bg-zinc-800 mt-1 rounded-md shadow-lg">
-          {suggestions.map((suggestion) => (
-            <div
-              key={suggestion.symbol}
-              className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer"
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              <span className="font-bold">{suggestion.symbol}</span> - {suggestion.name}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="absolute z-50 w-full bg-white dark:bg-zinc-800 top-full left-0 mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        {suggestions.map((suggestion) => (
+          <div
+            key={suggestion.symbol}
+            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer"
+            onClick={() => handleSuggestionClick(suggestion)}
+          >
+            <span className="font-bold">{suggestion.symbol}</span> - {suggestion.name}
+          </div>
+        ))}
+      </div>
+    )}
     </form>
   );
 }

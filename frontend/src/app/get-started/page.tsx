@@ -79,12 +79,16 @@ export default function GetStartedPage() {
         transition={{ duration: 0.5, delay: 0.9 }}
         className="mt-8"
       >
-        <Link href="/dashboard">
+        <Link href={selectedStocks.length > 0 ? "/dashboard" : "#"} passHref>
           <button
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            className={`px-6 py-3 rounded-lg transition-colors duration-300 ${
+              selectedStocks.length > 0
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
             disabled={selectedStocks.length === 0}
           >
-            Generate the Analysis
+            Generate Analysis
           </button>
         </Link>
       </motion.div>
