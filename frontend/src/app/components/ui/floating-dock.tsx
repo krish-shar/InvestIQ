@@ -16,7 +16,7 @@ const navItems = [
   { title: "Home", icon: <IconHome className="h-5 w-5" />, href: "/" },
   { title: "Choose", icon: <IconChartBar className="h-5 w-5" />, href: "/get-started" },
   { title: "Analyze", icon: <IconChartPie className="h-5 w-5" />, href: "/dashboard" },
-  { title: "Generate", icon: <IconRobot className="h-5 w-5" />, href: "#" },
+  { title: "Generate", icon: <IconRobot className="h-5 w-5" />, href: "/generate" },
 ];
 
 export const FloatingDock = () => {
