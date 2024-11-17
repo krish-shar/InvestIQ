@@ -33,6 +33,10 @@ const config: Config = {
         border: 'var(--border)',
         highlight: 'var(--highlight)',
       },
+      borderColor: {
+        DEFAULT: 'rgba(156, 163, 175, 0.2)', // Light mode: gray-400 with 20% opacity
+        dark: 'rgba(75, 85, 99, 0.3)', // Dark mode: gray-600 with 30% opacity
+      },
     },
   },
   plugins: [

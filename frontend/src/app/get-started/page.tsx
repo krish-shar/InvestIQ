@@ -64,22 +64,24 @@ export default function GetStartedPage() {
           disabled={selectedStocks.length >= 3}
         />
         <div className="mt-4 flex flex-wrap gap-2">
-          {selectedStocks.map((stock) => (
-            <div
-              key={stock}
-              className="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center"
-            >
-              {stock}
-              <button
-                onClick={() => handleRemoveStock(stock)}
-                className="ml-2 focus:outline-none hover:text-gray-200 transition-colors"
-              >
-                <span className="sr-only">Remove</span>
-                {/* Close Icon */}
-              </button>
-            </div>
-          ))}
+      {selectedStocks.map((stock) => (
+        <div
+          key={stock}
+          className="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center"
+        >
+          {stock}
+          <button
+            onClick={() => handleRemoveStock(stock)}
+            className="ml-2 focus:outline-none hover:text-gray-200 transition-colors"
+          >
+            <span className="sr-only">Remove</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
+      ))}
+    </div>
       </motion.div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
