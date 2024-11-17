@@ -1,0 +1,7 @@
+.vscode/*
+**config.py
+**/__pycache__/
+**/.env
+**/.venv/
+notebooks/algotrading/algotrading_env/
+config.py
