@@ -1,39 +1,55 @@
 "use client";
-
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+
+const stockSuggestions = [
+  { symbol: "AAPL", name: "Apple Inc." },
+  { symbol: "MSFT", name: "Microsoft Corporation" },
+  { symbol: "GOOGL", name: "Alphabet Inc." },
+  { symbol: "AMZN", name: "Amazon.com Inc." },
+  { symbol: "FB", name: "Meta Platforms Inc." },
+  { symbol: "TSLA", name: "Tesla Inc." },
+  { symbol: "NVDA", name: "NVIDIA Corporation" },
+  { symbol: "JPM", name: "JPMorgan Chase & Co." },
+  { symbol: "V", name: "Visa Inc." },
+  { symbol: "JNJ", name: "Johnson & Johnson" },
+  // Add more stocks as needed
+];
 
 export function PlaceholdersAndVanishInput({
   placeholders,
   onChange,
   onSubmit,
+  disabled = false,
 }: {
   placeholders: string[];
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (value: string) => void;
+  disabled?: boolean;
 }) {
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
-
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [suggestions, setSuggestions] = useState<Array<{ symbol: string; name: string }>>([]);
+
   const startAnimation = () => {
     intervalRef.current = setInterval(() => {
       setCurrentPlaceholder((prev) => (prev + 1) % placeholders.length);
     }, 3000);
   };
+
   const handleVisibilityChange = () => {
     if (document.visibilityState !== "visible" && intervalRef.current) {
-      clearInterval(intervalRef.current); // Clear the interval when the tab is not visible
+      clearInterval(intervalRef.current);
       intervalRef.current = null;
     } else if (document.visibilityState === "visible") {
-      startAnimation(); // Restart the interval when the tab becomes visible
+      startAnimation();
     }
   };
 
   useEffect(() => {
     startAnimation();
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -58,8 +74,8 @@ export function PlaceholdersAndVanishInput({
     canvas.width = 800;
     canvas.height = 800;
     ctx.clearRect(0, 0, 800, 800);
-    const computedStyles = getComputedStyle(inputRef.current);
 
+    const computedStyles = getComputedStyle(inputRef.current);
     const fontSize = parseFloat(computedStyles.getPropertyValue("font-size"));
     ctx.font = `${fontSize * 2}px ${computedStyles.fontFamily}`;
     ctx.fillStyle = "#FFF";
@@ -150,7 +166,7 @@ export function PlaceholdersAndVanishInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !animating) {
+    if (e.key === "Enter" && !animating && !disabled) {
       vanishAndSubmit();
     }
   };
@@ -158,7 +174,6 @@ export function PlaceholdersAndVanishInput({
   const vanishAndSubmit = () => {
     setAnimating(true);
     draw();
-
     const value = inputRef.current?.value || "";
     if (value && inputRef.current) {
       const maxX = newDataRef.current.reduce(
@@ -166,48 +181,71 @@ export function PlaceholdersAndVanishInput({
         0
       );
       animate(maxX);
+      onSubmit(value);
     }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    vanishAndSubmit();
-    onSubmit && onSubmit(e);
+    if (!disabled) {
+      vanishAndSubmit();
+    }
   };
+
+  const filterSuggestions = (input: string) => {
+    const filtered = stockSuggestions.filter(
+      (stock) =>
+        stock.symbol.toLowerCase().includes(input.toLowerCase()) ||
+        stock.name.toLowerCase().includes(input.toLowerCase())
+    );
+    setSuggestions(filtered.slice(0, 5)); // Limit to 5 suggestions
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!animating && !disabled) {
+      const newValue = e.target.value;
+      setValue(newValue);
+      filterSuggestions(newValue);
+      onChange && onChange(e);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: { symbol: string; name: string }) => {
+    setValue(suggestion.symbol);
+    setSuggestions([]);
+  };
+
   return (
     <form
       className={cn(
         "w-full relative max-w-xl mx-auto bg-white dark:bg-zinc-800 h-12 rounded-full overflow-hidden shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),_0px_1px_0px_0px_rgba(25,28,33,0.02),_0px_0px_0px_1px_rgba(25,28,33,0.08)] transition duration-200",
-        value && "bg-gray-50"
+        value && "bg-gray-50",
+        disabled && "opacity-50 cursor-not-allowed"
       )}
       onSubmit={handleSubmit}
     >
       <canvas
         className={cn(
-          "absolute pointer-events-none  text-base transform scale-50 top-[20%] left-2 sm:left-8 origin-top-left filter invert dark:invert-0 pr-20",
+          "absolute pointer-events-none text-base transform scale-50 top-[20%] left-2 sm:left-8 origin-top-left filter invert dark:invert-0 pr-20",
           !animating ? "opacity-0" : "opacity-100"
         )}
         ref={canvasRef}
       />
       <input
-        onChange={(e) => {
-          if (!animating) {
-            setValue(e.target.value);
-            onChange && onChange(e);
-          }
-        }}
+        onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         ref={inputRef}
         value={value}
         type="text"
+        disabled={disabled}
         className={cn(
           "w-full relative text-sm sm:text-base z-50 border-none dark:text-white bg-transparent text-black h-full rounded-full focus:outline-none focus:ring-0 pl-4 sm:pl-10 pr-20",
-          animating && "text-transparent dark:text-transparent"
+          animating && "text-transparent dark:text-transparent",
+          disabled && "cursor-not-allowed"
         )}
       />
-
       <button
-        disabled={!value}
+        disabled={!value || disabled}
         type="submit"
         className="absolute right-2 top-1/2 z-50 -translate-y-1/2 h-8 w-8 rounded-full disabled:bg-gray-100 bg-black dark:bg-zinc-900 dark:disabled:bg-zinc-800 transition duration-200 flex items-center justify-center"
       >
@@ -242,7 +280,6 @@ export function PlaceholdersAndVanishInput({
           <path d="M13 6l6 6" />
         </motion.svg>
       </button>
-
       <div className="absolute inset-0 flex items-center rounded-full pointer-events-none">
         <AnimatePresence mode="wait">
           {!value && (
@@ -271,6 +308,19 @@ export function PlaceholdersAndVanishInput({
           )}
         </AnimatePresence>
       </div>
+      {suggestions.length > 0 && !disabled && (
+        <div className="absolute z-50 w-full bg-white dark:bg-zinc-800 mt-1 rounded-md shadow-lg">
+          {suggestions.map((suggestion) => (
+            <div
+              key={suggestion.symbol}
+              className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              <span className="font-bold">{suggestion.symbol}</span> - {suggestion.name}
+            </div>
+          ))}
+        </div>
+      )}
     </form>
   );
 }

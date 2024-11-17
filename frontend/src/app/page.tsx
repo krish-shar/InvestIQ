@@ -40,7 +40,7 @@ export default function Home() {
           controls.start("visible");
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.3 }
     );
 
     if (secondSectionRef.current) {
@@ -63,7 +63,7 @@ export default function Home() {
   };
 
   return (
-    <div className="w-full h-full snap-y snap-mandatory overflow-scroll">
+    <div className="w-full h-screen snap-y snap-mandatory overflow-y-scroll">
       {/* Section 1 */}
       <section className="relative flex flex-col items-center justify-between h-screen bg-background text-foreground overflow-hidden snap-start py-12">
         <BackgroundBeams className="z-0" />
@@ -78,19 +78,19 @@ export default function Home() {
           </h1>
           <div className={`flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 transition-opacity duration-1000 ${fadeInButton ? "opacity-100" : "opacity-0"}`}>
             <Link href="/get-started">
-              <button className="px-6 py-3 font-semibold rounded-lg !border-2 !border-solid border-foreground text-foreground hover:bg-accent hover:text-accent-foreground transition-colors hover:bg-foreground hover:text-background transition-colors duration-300">
+              <button className="px-6 py-3 font-semibold rounded-lg border-2 border-solid border-foreground text-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-300">
                 Get Started
               </button>
             </Link>
           </div>
         </div>
         <p className={`text-lg font-semibold text-muted z-10 text-center transition-opacity duration-1000 ${fadeInText ? "opacity-100" : "opacity-0"}`}>
-          How are we better ? ↓
+          How are we better? ↓
         </p>
       </section>
 
       {/* Section 2: What makes us different */}
-      <section ref={secondSectionRef} className="min-h-screen flex flex-col items-center justify-start pt-20 snap-start bg-background text-primary">
+      <section ref={secondSectionRef} className="h-screen flex flex-col items-center justify-start pt-20 snap-start bg-background text-primary">
         <motion.h2 
           variants={variants}
           initial="hidden"
