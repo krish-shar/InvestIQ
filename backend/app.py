@@ -1,3 +1,4 @@
+import base64
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from info_retriever import (
@@ -25,6 +26,7 @@ from typing import List, Dict, Union
 from tqdm import tqdm
 from unstructured.partition.html import partition_html
 from unstructured.chunking.title import chunk_by_title
+from autogen_creator import write_algorithm
 # from sklearn.preprocessing import MinMaxScaler
 # from keras.models import Sequential
 # from keras.layers import Dense, LSTM
@@ -284,59 +286,63 @@ def chat():
     data = request.json
     message = data.get('message')
     chat_history = data.get('chat_history', [])
-
-    if not message:
-        return jsonify({"error": "Message is required"}), 400
-
-    print("Using perplexity to generate response...")
-
-    # Generate search queries, if any
-    response = co.chat(
-        message=message,
-        preamble="You must make the first search query the ticker of the stock in question.",
-        model="command-r-plus",
-        search_queries_only=True,
-        chat_history=chat_history
-    )
     
-    
-    ticker = co.chat(
-        model="command-r-plus",
-        preamble="you are going to return only the ticker for the company that the user is asking about. The ticker should be formatted with MAX 4 characters and MIN 2 characters",
-        message=message,
-        connectors=[{"id": "web-search"}]
-    )
-    
-    ensure_stock_embedded(ticker=ticker.text, vectorstore=vectorstore)
-    print(f"Using perplexity to generate response for {ticker.text}...")
-    
+    try:
 
-    search_queries = []
-    for query in response.search_queries:
-        search_queries.append(query.text)
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
 
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are an artificial intelligence assistant and you need to engage in a helpful, detailed, polite conversation with a user."
-            ),
-        },
-        *chat_history,
-        {
-            "role": "user",
-            "content": message,
-        },
-    ]
+        print("Using perplexity to generate response...")
 
-    # If there are search queries, retrieve the documents
-    if search_queries:
-        print("Retrieving information...", end="")
-        documents = []
-        for query in search_queries:
-            documents.extend(vectorstore.retrieve(query))
+        # Generate search queries, if any
+        response = co.chat(
+            message=message,
+            preamble="You must make the first search query the ticker of the stock in question.",
+            model="command-r-plus",
+            search_queries_only=True,
+            chat_history=chat_history
+        )
+        
+        
+        ticker = co.chat(
+            model="command-r-plus",
+            preamble="you are going to return only the ticker for the company that the user is asking about. The ticker should be formatted with MAX 4 characters and MIN 2 characters",
+            message=message,
+            connectors=[{"id": "web-search"}]
+        )
+        
+        ensure_stock_embedded(ticker=ticker.text, vectorstore=vectorstore)
+        print(f"Using perplexity to generate response for {ticker.text}...")
+        
 
-        messages[1]["content"] += f" You may use the following information to generate a response but you should generate and use your own sources: {documents}"
+        search_queries = []
+        for query in response.search_queries:
+            search_queries.append(query.text)
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an artificial intelligence assistant and you need to engage in a helpful, detailed, polite conversation with a user."
+                ),
+            },
+            *chat_history,
+            {
+                "role": "user",
+                "content": message,
+            },
+        ]
+
+        # If there are search queries, retrieve the documents
+        if search_queries:
+            print("Retrieving information...", end="")
+            documents = []
+            for query in search_queries:
+                documents.extend(vectorstore.retrieve(query))
+
+            messages[1]["content"] += f" You may use the following information to generate a response but you should generate and use your own sources: {documents}"
+    except:
+        pass
 
     response = perclient.chat.completions.create(
         model="llama-3.1-sonar-large-128k-online",
@@ -345,11 +351,42 @@ def chat():
     print({"response": response.choices[0].message.content})
     return {"response": response.choices[0].message.content, "citations": response.citations}
 
+@app.route('/algowriter', methods=['POST'])
+def algowriter():
+    data = request.json
+    prompt = data.get('message')
+    
+    if not prompt:
+        return jsonify({"error": "Message is required"}), 400
+    
+    chat_result = write_algorithm(prompt)
+    
+    # Read the generated markdown file
+    try:
+        with open('generation/output.md', 'r') as md_file:
+            markdown_content = md_file.read()
+    except FileNotFoundError:
+        markdown_content = ""
+    
+    # Read the generated PNG file as base64
+    try:
+        with open('generation/output.png', 'rb') as img_file:
+            image_content = base64.b64encode(img_file.read()).decode('utf-8')
+    except FileNotFoundError:
+        image_content = ""
+    
+    return jsonify({
+        "response": chat_result,
+        "markdown": markdown_content,
+        "image": image_content
+    })
 @app.route('/test_chat', methods=['POST'])
 def test_chat():
     data = request.json
     message = data.get('message')
     return {"response": message}
+
+
 
 
 if __name__ == '__main__':
