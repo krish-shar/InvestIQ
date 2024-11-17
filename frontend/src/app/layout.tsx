@@ -9,7 +9,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="relative scroll-smooth scroll-snap-y">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {/* Dark mode toggle button */}
-          <div className="fixed top-4 right-4 z-20">
+          <div className="fixed top-4 right-7 z-20">
             <ModeToggle />
           </div>
           <div className="snap-y snap-mandatory overflow-y-auto h-screen">

@@ -85,12 +85,12 @@ export default function Home() {
           </div>
         </div>
         <p className={`text-lg font-semibold text-muted z-10 text-center transition-opacity duration-1000 ${fadeInText ? "opacity-100" : "opacity-0"}`}>
-          How are we different? ↓
+          How are we better ? ↓
         </p>
       </section>
 
       {/* Section 2: What makes us different */}
-      <section ref={secondSectionRef} className="min-h-screen flex flex-col items-center justify-start pt-20 snap-start bg-background text-white">
+      <section ref={secondSectionRef} className="min-h-screen flex flex-col items-center justify-start pt-20 snap-start bg-background text-primary">
         <motion.h2 
           variants={variants}
           initial="hidden"
