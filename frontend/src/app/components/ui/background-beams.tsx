@@ -89,29 +89,29 @@ export const BackgroundBeams = React.memo(
             ></motion.path>
           ))}
           <defs>
-            {paths.map((path, index) => (
-              <motion.linearGradient
-                id={`linearGradient-${index}`}
-                key={`gradient-${index}`}
-                initial={{
-                  x1: "0%",
-                  x2: "0%",
-                  y1: "0%",
-                  y2: "0%",
-                }}
-                animate={{
-                  x1: ["0%", "100%"],
-                  x2: ["0%", "95%"],
-                  y1: ["0%", "100%"],
-                  y2: ["0%", `${93 + Math.random() * 8}%`],
-                }}
-                transition={{
-                  duration: Math.random() * 10 + 10,
-                  ease: "easeInOut",
-                  repeat: Infinity,
-                  delay: Math.random() * 10,
-                }}
-              >
+          {paths.map((path, index) => (
+  <motion.linearGradient
+    id={`linearGradient-${index}`}
+    key={`gradient-${index}`}
+    initial={{
+      x1: "0%",
+      x2: "0%",
+      y1: "0%",
+      y2: "0%",
+    }}
+    animate={{
+      x1: ["0%", "100%"],
+      x2: ["0%", "95%"],
+      y1: ["0%", "100%"],
+      y2: ["0%", `${93 + Math.random() * 8}%`],
+    }}
+    transition={{
+      duration: Math.random() * 7 + 7, // Reduced from 10 + 10 to 5 + 5
+      ease: "easeInOut",
+      repeat: Infinity,
+      delay: Math.random() * 7, // Reduced from 10 to 5
+    }}
+  >
                 <stop stopColor="#18CCFC" stopOpacity="0"></stop>
                 <stop stopColor="#18CCFC"></stop>
                 <stop offset="32.5%" stopColor="#6344F5"></stop>
