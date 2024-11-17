@@ -90,11 +90,13 @@ button {
   background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   border: 1px solid hsl(var(--border));
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 button:hover {
   background-color: hsl(var(--secondary));
-  color: hsl(var(--secondary-foreground));
+  color: hsl(var(--background));
+  border-color: hsl(var(--secondary));
 }
 
 /* Apply Border and Background to All Elements */

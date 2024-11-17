@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/app/components/ui/theme-provider";
 import { ModeToggle } from "@/app/components/ui/mode-toggle";
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import { FloatingDock } from "@/app/components/ui/floating-dock";
 
 function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,8 +31,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head />
       <body className="relative scroll-smooth scroll-snap-y">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <FloatingDock />
           {/* Dark mode toggle button */}
-          <div className="fixed top-4 right-7 z-20">
+          <div className="fixed top-8 right-8 z-50">
             <ModeToggle />
           </div>
           <div className="snap-y snap-mandatory overflow-y-auto h-screen">
