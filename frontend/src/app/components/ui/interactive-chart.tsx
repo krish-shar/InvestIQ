@@ -1,4 +1,6 @@
 "use client";
+
+import { useState, useEffect } from "react";
 import { TrendingUp } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis, Legend } from "recharts";
 import {
@@ -16,36 +18,49 @@ import {
   ChartTooltipContent,
 } from "@/app/components/ui/chart";
 
-const chartData = [
-  { month: "January", Apple: 150, Microsoft: 220, Google: 180 },
-  { month: "February", Apple: 180, Microsoft: 230, Google: 190 },
-  { month: "March", Apple: 170, Microsoft: 250, Google: 200 },
-  { month: "April", Apple: 160, Microsoft: 240, Google: 210 },
-  { month: "May", Apple: 190, Microsoft: 260, Google: 220 },
-  { month: "June", Apple: 200, Microsoft: 270, Google: 230 },
-];
-
 const chartConfig = {
-  Apple: {
+  AAPL: {
     label: "Apple",
     color: "hsl(210, 70%, 60%)",
-  },
-  Microsoft: {
-    label: "Microsoft",
-    color: "hsl(140, 70%, 60%)",
-  },
-  Google: {
-    label: "Google",
-    color: "hsl(50, 70%, 60%)",
   },
 } satisfies ChartConfig;
 
 export default function InteractiveChart() {
+  const [chartData, setChartData] = useState([]);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      const apiKey = ""; 
+      const url = `https://api.marketstack.com/v1/eod?access_key=${apiKey}&symbols=AAPL`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Error fetching data: ${response.statusText}`);
+        }
+        const data = await response.json();
+        const transformedData = data.data.map((entry) => ({
+          date: entry.date.split("T")[0], 
+          close: entry.close, 
+        }));
+        setChartData(transformedData.reverse()); 
+      } catch (err) {
+        setError(err.message);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Stock Performance - 2024</CardTitle>
-        <CardDescription>January - June</CardDescription>
+        <CardTitle>Stock Performance - AAPL</CardTitle>
+        <CardDescription>Historical Data</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
@@ -60,7 +75,7 @@ export default function InteractiveChart() {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="date"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
@@ -72,23 +87,9 @@ export default function InteractiveChart() {
               content={<ChartTooltipContent hideLabel />}
             />
             <Line
-              dataKey="Apple"
+              dataKey="close"
               type="linear"
               stroke="hsl(210, 70%, 60%)"
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              dataKey="Microsoft"
-              type="linear"
-              stroke="hsl(140, 70%, 60%)"
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              dataKey="Google"
-              type="linear"
-              stroke="hsl(50, 70%, 60%)"
               strokeWidth={2}
               dot={false}
             />
@@ -100,9 +101,10 @@ export default function InteractiveChart() {
           Stocks trending up this quarter <TrendingUp className="h-4 w-4" />
         </div>
         <div className="leading-none text-muted-foreground">
-          Showing stock performance for the last 6 months
+          Showing stock performance for the last historical data points
         </div>
       </CardFooter>
     </Card>
   );
 }
+
