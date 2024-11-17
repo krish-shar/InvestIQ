@@ -1,24 +1,35 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from "chart.js";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
-import { ModeToggle } from "@/app/components/ui/mode-toggle";
 import { useTheme } from "next-themes";
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
+import { useSearchParams } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
-// Mock data for stocks
-const stocksData = [
-  { symbol: "AAPL", name: "Apple Inc.", price: 150.25, change: 2.5 },
-  { symbol: "GOOGL", name: "Alphabet Inc.", price: 2750.80, change: -0.8 },
-  { symbol: "MSFT", name: "Microsoft Corporation", price: 305.15, change: 1.2 },
-];
+const API_KEY = process.env.NEXT_PUBLIC_MS_API_KEY;
 
 type Message = {
   text: string;
@@ -26,83 +37,195 @@ type Message = {
   citations?: string[];
 };
 
-const processCitations = (text: string, citations: string[]) => {
-  const citationRegex = /\[(\d+)\]/g;
-  let processedText = text;
-  const usedCitations = new Set<number>();
-  
-  // Replace citations in the text
-  processedText = processedText.replace(citationRegex, (match, p1) => {
-    const index = parseInt(p1) - 1;
-    if (index >= 0 && index < citations.length) {
-      usedCitations.add(index);
-      return `<sup><a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="citation-link">[${index + 1}]</a></sup>`;
-    }
-    return match;
-  });
+type HistoricalData = {
+  date: string;
+  close: number;
+};
 
-  // Group citations at the bottom
-  const groupedCitations = Array.from(usedCitations)
-    .sort((a, b) => a - b)
-    .map(index => {
-      const url = new URL(citations[index]);
-      return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="citation-link">${url.hostname}</a>`;
-    })
-    .join(', ');
-
-  if (groupedCitations) {
-    processedText += `\n\nSources: ${groupedCitations}`;
-  }
-
-  return processedText;
+type StockData = {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  historicalData: HistoricalData[];
 };
 
 export default function Dashboard() {
+  const searchParams = useSearchParams();
+  const stocksParam = searchParams.get("stocks");
+  const STOCK_SYMBOLS = stocksParam ? stocksParam.split(",") : [];
+  const COLORS = ["rgb(255, 99, 132)", "rgb(54, 162, 235)", "rgb(75, 192, 192)"];
+
+  const [stocksData, setStocksData] = useState<StockData[]>([]);
+  const [chartData, setChartData] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { theme } = useTheme();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  const processCitations = (text: string, citations: string[]) => {
+    const citationRegex = /\[(\d+)\]/g;
+    let processedText = text;
+    const usedCitations = new Set<number>();
+
+    processedText = processedText.replace(citationRegex, (match, p1) => {
+      const index = parseInt(p1) - 1;
+      if (index >= 0 && index < citations.length) {
+        usedCitations.add(index);
+        return `<sup><a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="citation-link">[${index + 1}]</a></sup>`;
+      }
+      return match;
+    });
+
+    const groupedCitations = Array.from(usedCitations)
+      .sort((a, b) => a - b)
+      .map((index) => {
+        const url = new URL(citations[index]);
+        return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="citation-link">${url.hostname}</a>`;
+      })
+      .join(", ");
+
+    if (groupedCitations) {
+      processedText += `\n\nSources: ${groupedCitations}`;
+    }
+
+    return processedText;
+  };
+const hasFetched = useRef(false);
+useEffect(() => {
+  const fetchStockData = async () => {
+    try {
+      if (STOCK_SYMBOLS.length === 0) {
+        console.error("No stock symbols provided.");
+        return;
+      }
+
+      const symbols = STOCK_SYMBOLS.join(',');
+      const url = `/api/stocks?symbols=${symbols}`;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`HTTP error! Status: ${response.status}. Message: ${errorData.error}`);
+      }
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(`API error: ${data.error}`);
+      }
+
+      const groupedData = STOCK_SYMBOLS.map((symbol) => {
+        const stockData = data.data.filter((entry: any) => entry.symbol === symbol);
+        if (stockData.length === 0) {
+          console.warn(`No data returned for ${symbol}`);
+          return null;
+        }
+        const historicalData = stockData.map((entry: any) => ({
+          date: new Date(entry.date).toLocaleDateString("en-US", {
+            month: "2-digit",
+            day: "2-digit",
+          }),
+          close: entry.close,
+        })).reverse(); // Reverse to have chronological order
+
+        return {
+          symbol,
+          name: symbol,
+          price: historicalData[historicalData.length - 1]?.close || 0,
+          change:
+            historicalData.length > 1
+              ? ((historicalData[historicalData.length - 1]?.close - historicalData[historicalData.length - 2]?.close) /
+                  historicalData[historicalData.length - 2]?.close) *
+                100
+              : 0,
+          historicalData,
+        };
+      }).filter((stock): stock is StockData => stock !== null);
+
+      setStocksData(groupedData);
+
+      // Prepare chart data
+      const labels = [
+        ...new Set(groupedData.flatMap((stock) => stock.historicalData.map((d) => d.date))),
+      ].sort();
+      const datasets = groupedData.map((stock, index) => ({
+        label: stock.symbol,
+        data: labels.map(
+          (label) => stock.historicalData.find((d) => d.date === label)?.close || null
+        ),
+        borderColor: COLORS[index % COLORS.length],
+        backgroundColor: `${COLORS[index % COLORS.length]}80`,
+        tension: 0.1,
+      }));
+
+      setChartData({ labels, datasets });
+
+    } catch (error: any) {
+      console.error("Error fetching stock data:", error.message || error);
+    }
+  };
+
+   if (!hasFetched.current) {
+    hasFetched.current = true;
+    fetchStockData();
+  }
+}, []);
+
+
   useEffect(() => {
-    const welcomeMessage: Message = {
-      text: "Hey! Ask me any questions about the stocks you are interested in",
-      isUser: false
-    };
-    setChatMessages([welcomeMessage]);
+    const initialAnalysis = localStorage.getItem('initialAnalysis');
+    if (initialAnalysis) {
+      const data = JSON.parse(initialAnalysis);
+      const processedText = processCitations(data.response, data.citations);
+      const aiMessage: Message = {
+        text: processedText,
+        isUser: false,
+        citations: data.citations
+      };
+      setChatMessages([aiMessage]);
+      localStorage.removeItem('initialAnalysis');
+    } else {
+      const welcomeMessage: Message = {
+        text: "Hey! Ask me any questions about the stocks you are interested in",
+        isUser: false
+      };
+      setChatMessages([welcomeMessage]);
+    }
   }, []);
 
   const handleSendMessage = async () => {
     if (inputMessage.trim()) {
       const userMessage: Message = { text: inputMessage, isUser: true };
-      setChatMessages(prevMessages => [...prevMessages, userMessage]);
+      setChatMessages((prevMessages) => [...prevMessages, userMessage]);
       setIsLoading(true);
 
       try {
-        const response = await fetch('http://localhost:8080/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+        const response = await fetch("http://localhost:8080/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: inputMessage }),
         });
 
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error("Network response was not ok");
         }
 
         const data = await response.json();
         const processedText = processCitations(data.response, data.citations);
-        const aiMessage: Message = { 
+        const aiMessage: Message = {
           text: processedText,
           isUser: false,
           citations: data.citations
         };
-        setChatMessages(prevMessages => [...prevMessages, aiMessage]);
+        setChatMessages((prevMessages) => [...prevMessages, aiMessage]);
       } catch (error) {
-        console.error('Error:', error);
-        const errorMessage: Message = { text: "Sorry, I couldn't process your request.", isUser: false };
-        setChatMessages(prevMessages => [...prevMessages, errorMessage]);
+        console.error("Error:", error);
+        const errorMessage: Message = {
+          text: "Sorry, I couldn't process your request.",
+          isUser: false
+        };
+        setChatMessages((prevMessages) => [...prevMessages, errorMessage]);
       } finally {
         setIsLoading(false);
       }
@@ -117,36 +240,13 @@ export default function Dashboard() {
     }
   }, [chatMessages]);
 
-  // Chart data
-  const chartData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Stock Price',
-        data: [120, 130, 125, 135, 140, 150],
-        borderColor: theme === 'dark' ? 'rgb(59, 130, 246)' : 'rgb(37, 99, 235)',
-        backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(37, 99, 235, 0.5)',
-        tension: 0.1,
-      },
-    ],
-  };
-
   const chartOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Stock Performance',
-      },
+      legend: { position: "top" as const },
+      title: { display: true, text: "Historical Stock Performance" },
     },
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
+    scales: { y: { beginAtZero: false } },
   };
 
   return (
@@ -155,7 +255,6 @@ export default function Dashboard() {
       <div className="w-2/3 p-6 overflow-y-auto border-r border-gray-600/30 dark:border-gray-400/30">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Your Stocks</h2>
-          <ModeToggle />
         </div>
         <div className="grid grid-cols-3 gap-4 mb-6">
           {stocksData.map((stock) => (
@@ -169,36 +268,38 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-        <div className="bg-card text-card-foreground p-4 rounded-lg shadow border border-gray-600/30 dark:border-gray-400/30">
-          <h3 className="text-xl font-bold mb-2">Stock Performance</h3>
-          <Line data={chartData} options={chartOptions} />
-        </div>
+        {chartData && (
+          <div className="bg-card text-card-foreground p-4 rounded-lg shadow border border-gray-600/30 dark:border-gray-400/30">
+            <h3 className="text-xl font-bold mb-2">Stock Performance</h3>
+            <Line data={chartData} options={chartOptions} />
+          </div>
+        )}
       </div>
 
       {/* Right side - Chatbot */}
       <div className="w-1/3 bg-card text-card-foreground p-6 flex flex-col border-l border-gray-600/30 dark:border-gray-400/30">
         <h2 className="text-2xl font-bold mb-4">AI Assistant</h2>
-        <div 
-          ref={chatContainerRef}
-          className="flex-grow overflow-y-auto mb-4 space-y-4 border border-gray-600/30 dark:border-gray-400/30 rounded-lg p-4"
-        >
+        <div ref={chatContainerRef} className="flex-grow overflow-y-auto mb-4 space-y-4 border border-gray-600/30 dark:border-gray-400/30 rounded-lg p-4">
           {chatMessages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[70%] p-3 rounded-lg ${
-                  message.isUser
-                    ? 'bg-blue-500 text-white rounded-br-none'
-                    : 'bg-gray-200 dark:bg-gray-700 rounded-bl-none prose dark:prose-invert'
-                }`}
-              >
-                {message.isUser ? (
-                  <ReactMarkdown>{message.text}</ReactMarkdown>
-                ) : (
-                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>{message.text}</ReactMarkdown>
-                )}
+            <div key={index} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[70%] p-3 rounded-lg ${
+                message.isUser ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-200 dark:bg-gray-700 rounded-bl-none prose dark:prose-invert'
+              }`}>
+                <ReactMarkdown
+                  rehypePlugins={[rehypeRaw]}
+                  components={{
+                    h1: ({node, ...props}) => <h1 className="text-2xl font-bold" {...props} />,
+                    h2: ({node, ...props}) => <h2 className="text-xl font-bold" {...props} />,
+                    h3: ({node, ...props}) => <h3 className="text-lg font-bold" {...props} />,
+                    strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+                    em: ({node, ...props}) => <em className="italic" {...props} />,
+                    ul: ({node, ...props}) => <ul className="list-disc list-inside" {...props} />,
+                    ol: ({node, ...props}) => <ol className="list-decimal list-inside" {...props} />,
+                    a: ({node, ...props}) => <a className="text-blue-500 hover:underline" {...props} />,
+                  }}
+                >
+                  {message.text}
+                </ReactMarkdown>
               </div>
             </div>
           ))}
@@ -209,12 +310,12 @@ export default function Dashboard() {
             placeholder="Ask about your stocks..."
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
             className="border-gray-600/30 dark:border-gray-400/30"
             disabled={isLoading}
           />
           <Button onClick={handleSendMessage} disabled={isLoading}>
-            {isLoading ? 'Sending...' : 'Send'}
+            {isLoading ? "Sending..." : "Send"}
           </Button>
         </div>
       </div>

@@ -59,6 +59,12 @@ html {
   font-family: 'Inter', sans-serif;
 }
 
+.dark button {
+  background-color: hsl(217, 91%, 72%);
+  color: hsl(var(--primary-foreground));
+}
+
+
 /* Light Mode */
 html.light {
   --background: hsl(210, 30%, 97%);
