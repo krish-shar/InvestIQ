@@ -1,3 +1,4 @@
+// PlaceholdersAndVanishInput.tsx
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -24,12 +25,18 @@ export function PlaceholdersAndVanishInput({
 }: {
   placeholders: string[];
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: (value: string) => void;
+  onSubmit: (stock: { symbol: string; name: string }) => void;
   disabled?: boolean;
 }) {
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [suggestions, setSuggestions] = useState<Array<{ symbol: string; name: string }>>([]);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [value, setValue] = useState("");
+  const [animating, setAnimating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const newDataRef = useRef<any[]>([]);
 
   const startAnimation = () => {
     intervalRef.current = setInterval(() => {
@@ -56,12 +63,6 @@ export function PlaceholdersAndVanishInput({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [placeholders]);
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const newDataRef = useRef<any[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState("");
-  const [animating, setAnimating] = useState(false);
 
   const draw = useCallback(() => {
     if (!inputRef.current) return;
@@ -164,36 +165,54 @@ export function PlaceholdersAndVanishInput({
     animateFrame(start);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !animating && !disabled) {
-      vanishAndSubmit();
-    }
-  };
-
-  const vanishAndSubmit = () => {
+  const vanishAndSubmit = (selectedStock?: { symbol: string; name: string }) => {
     setAnimating(true);
     draw();
-    const value = inputRef.current?.value || "";
-    if (value && inputRef.current) {
+    const inputValue = inputRef.current?.value || "";
+    let stock = selectedStock;
+
+    if (!stock) {
+      // Try to find the stock in stockSuggestions
+      const foundStock = stockSuggestions.find(
+        (s) => s.symbol.toLowerCase() === inputValue.toLowerCase()
+      );
+      stock = foundStock || { symbol: inputValue, name: "" };
+    }
+
+    if (inputValue && inputRef.current) {
       const maxX = newDataRef.current.reduce(
         (prev, current) => (current.x > prev ? current.x : prev),
         0
       );
       animate(maxX);
-      onSubmit(value);
+      onSubmit(stock);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!disabled) {
-      vanishAndSubmit();
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !animating && !disabled) {
+      if (highlightedIndex >= 0 && suggestions.length > 0) {
+        handleSuggestionClick(suggestions[highlightedIndex]);
+      } else {
+        vanishAndSubmit();
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prevIndex) =>
+        prevIndex < suggestions.length - 1 ? prevIndex + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prevIndex) =>
+        prevIndex > 0 ? prevIndex - 1 : suggestions.length - 1
+      );
     }
   };
 
   const filterSuggestions = (input: string) => {
     if (!input.trim()) {
       setSuggestions([]);
+      setHighlightedIndex(-1);
       return;
     }
     const filtered = stockSuggestions.filter(
@@ -202,6 +221,7 @@ export function PlaceholdersAndVanishInput({
         stock.name.toLowerCase().includes(input.toLowerCase())
     );
     setSuggestions(filtered.slice(0, 5)); // Limit to 5 suggestions
+    setHighlightedIndex(-1);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,17 +236,28 @@ export function PlaceholdersAndVanishInput({
   const handleSuggestionClick = (suggestion: { symbol: string; name: string }) => {
     setValue(suggestion.symbol);
     setSuggestions([]);
-    vanishAndSubmit();
+    vanishAndSubmit(suggestion);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => {
+      setSuggestions([]);
+    }, 100);
   };
 
   return (
     <form
       className={cn(
-        "w-full relative max-w-xl mx-auto bg-white dark:bg-zinc-800 h-12 rounded-full overflow-hidden shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),_0px_1px_0px_0px_rgba(25,28,33,0.02),_0px_0px_0px_1px_rgba(25,28,33,0.08)] transition duration-200",
+        "w-full relative max-w-xl mx-auto bg-white dark:bg-zinc-800 h-12 rounded-full shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),_0px_1px_0px_0px_rgba(25,28,33,0.02),_0px_0px_0px_1px_rgba(25,28,33,0.08)] transition duration-200",
         value && "bg-gray-50",
         disabled && "opacity-50 cursor-not-allowed"
       )}
-      onSubmit={handleSubmit}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!disabled) {
+          vanishAndSubmit();
+        }
+      }}
     >
       <canvas
         className={cn(
@@ -238,6 +269,7 @@ export function PlaceholdersAndVanishInput({
       <input
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
         ref={inputRef}
         value={value}
         type="text"
@@ -313,11 +345,16 @@ export function PlaceholdersAndVanishInput({
         </AnimatePresence>
       </div>
       {suggestions.length > 0 && !disabled && (
-        <div className="absolute z-50 w-full bg-white dark:bg-zinc-800 top-full left-0 mt-1 rounded-md shadow-lg">
-          {suggestions.map((suggestion) => (
+        <div className="absolute z-[100] w-full bg-white dark:bg-zinc-800 top-full left-0 mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          {suggestions.map((suggestion, index) => (
             <div
               key={suggestion.symbol}
-              className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer"
+              className={cn(
+                "px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer flex items-center",
+                highlightedIndex === index ? "bg-gray-200 dark:bg-zinc-700" : ""
+              )}
+              onMouseEnter={() => setHighlightedIndex(index)}
+              onMouseLeave={() => setHighlightedIndex(-1)}
               onClick={() => handleSuggestionClick(suggestion)}
             >
               <span className="font-bold">{suggestion.symbol}</span> - {suggestion.name}
