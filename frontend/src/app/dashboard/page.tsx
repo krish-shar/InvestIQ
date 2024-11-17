@@ -8,6 +8,8 @@ import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
 import { ModeToggle } from "@/app/components/ui/mode-toggle";
 import { useTheme } from "next-themes";
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -21,19 +23,82 @@ const stocksData = [
 type Message = {
   text: string;
   isUser: boolean;
+  citations?: string[];
+};
+
+const processCitations = (text: string, citations: string[]) => {
+  const citationRegex = /\[(\d+)\]/g;
+  let processedText = text;
+  const usedCitations = new Set<number>();
+  
+  // Replace citations in the text
+  processedText = processedText.replace(citationRegex, (match, p1) => {
+    const index = parseInt(p1) - 1;
+    if (index >= 0 && index < citations.length) {
+      usedCitations.add(index);
+      return `<sup><a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="citation-link">[${index + 1}]</a></sup>`;
+    }
+    return match;
+  });
+
+  // Group citations at the bottom
+  const groupedCitations = Array.from(usedCitations)
+    .sort((a, b) => a - b)
+    .map(index => {
+      const url = new URL(citations[index]);
+      return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="citation-link">${url.hostname}</a>`;
+    })
+    .join(', ');
+
+  if (groupedCitations) {
+    processedText += `\n\nSources: ${groupedCitations}`;
+  }
+
+  return processedText;
 };
 
 export default function Dashboard() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { theme } = useTheme();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputMessage.trim()) {
       const userMessage: Message = { text: inputMessage, isUser: true };
-      const aiMessage: Message = { text: "Hello! How can I assist you with your stocks today?", isUser: false };
-      setChatMessages([...chatMessages, userMessage, aiMessage]);
+      setChatMessages([...chatMessages, userMessage]);
+      setIsLoading(true);
+
+      try {
+        const response = await fetch('http://localhost:8080/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: inputMessage }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        const processedText = processCitations(data.response, data.citations);
+        const aiMessage: Message = { 
+          text: processedText,
+          isUser: false,
+          citations: data.citations
+        };
+        setChatMessages(prevMessages => [...prevMessages, aiMessage]);
+      } catch (error) {
+        console.error('Error:', error);
+        const errorMessage: Message = { text: "Sorry, I couldn't process your request.", isUser: false };
+        setChatMessages(prevMessages => [...prevMessages, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
+
       setInputMessage("");
     }
   };
@@ -118,10 +183,14 @@ export default function Dashboard() {
                 className={`max-w-[70%] p-3 rounded-lg ${
                   message.isUser
                     ? 'bg-blue-500 text-white rounded-br-none'
-                    : 'bg-gray-200 dark:bg-gray-700 rounded-bl-none'
+                    : 'bg-gray-200 dark:bg-gray-700 rounded-bl-none prose dark:prose-invert'
                 }`}
               >
-                {message.text}
+                {message.isUser ? (
+                  <ReactMarkdown>{message.text}</ReactMarkdown>
+                ) : (
+                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>{message.text}</ReactMarkdown>
+                )}
               </div>
             </div>
           ))}
@@ -134,10 +203,28 @@ export default function Dashboard() {
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
             className="border-gray-600/30 dark:border-gray-400/30"
+            disabled={isLoading}
           />
-          <Button onClick={handleSendMessage}>Send</Button>
+          <Button onClick={handleSendMessage} disabled={isLoading}>
+            {isLoading ? 'Sending...' : 'Send'}
+          </Button>
         </div>
       </div>
+      <style jsx global>{`
+        .citation-link {
+          color: #3b82f6 !important;
+          text-decoration: none !important;
+        }
+        .citation-link:hover {
+          text-decoration: underline !important;
+        }
+        .prose a {
+          text-decoration: none !important;
+        }
+        .prose a:hover {
+          text-decoration: underline !important;
+        }
+      `}</style>
     </div>
   );
-} 
+}
