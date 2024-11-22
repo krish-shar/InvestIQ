@@ -1,1 +1,1 @@
-# hackutd-ripple-effect
+# InvestIQ
